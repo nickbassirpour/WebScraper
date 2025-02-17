@@ -8,6 +8,8 @@ using WebScraper.Models;
 using static System.Net.Mime.MediaTypeNames;
 using System.Drawing;
 using RestSharp;
+using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace WebScraper.Services
 {
@@ -41,13 +43,13 @@ namespace WebScraper.Services
 
             RestClient client = new RestClient("http://localhost:5223/");
             RestRequest request = new RestRequest("add_new_article", Method.Post);
-
-            request.AddJsonBody(articleModel);
             request.AddHeader("Content-Type", "application/json");
+            string jsonBody = JsonConvert.SerializeObject(articleModel);
+            request.AddParameter("application/json", articleModel, ParameterType.RequestBody);
 
             try
             {
-                RestResponse response = await client.ExecuteAsync(request);
+                RestResponse response = client.Execute(request);
                 if (!response.IsSuccessful)
                 {
                     Console.WriteLine("failed");
