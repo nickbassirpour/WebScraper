@@ -121,6 +121,32 @@ namespace WebScraper.Helpers
         {
             "bevimages/00_Peregrine.jpg"
         };
+
+        internal static string[] titleAttributes = new string[]
+        {
+            "//*[@size=6 and @color='maroon' or @size=6 and @color='#800000']",
+            "//*[@size=6 and @color='#990000']",
+            "//*[@size=6 and @color='green']",
+            "//*[@size=6 and @color='MAROON']",
+            "//*[@size=5 and @color='#800000']"
+        };
+
+        internal static string[] authorAttributes = new string[]
+        {
+            "//*[@class='author']",
+            "//*[@size=4 and @id='R']",
+            "//*[@size=4 and @color='PURPLE']",
+            "//*[@size=4]"
+        };
+
+        internal static string[] dateAttributes = new string[]
+        {
+            "//*[@id=\'posted\' or @id=\'sitation\']",
+            "//*[@size='1' and @color='navy']",
+            "//*[@size='1' and @color='NAVY']",
+            "//*[@size='1' and @color='#000080']",
+            "//*[contains(text(), 'Posted')]"
+        };
+
     }
 }
- 

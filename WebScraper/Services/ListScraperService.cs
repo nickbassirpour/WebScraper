@@ -10,6 +10,7 @@ using System.Data.Common;
 using System.ComponentModel;
 using System.Collections.Specialized;
 using WebScraper.Models;
+using Serilog;
 
 namespace WebScraper.Services
 {
@@ -29,6 +30,8 @@ namespace WebScraper.Services
                 {
                     if (article.Url.EndsWith(".pdf") || article.Url.Contains("tiabk") || article.Url.EndsWith("pps") || article.Url.EndsWith("mp4"))
                     {
+                        Log.Error($"Article contains improper domain extension: {article}");
+                        Log.Error($"Skipping");
                         continue;
                     }
 
@@ -42,19 +45,17 @@ namespace WebScraper.Services
                     }
                     else
                     {
+                        Log.Information($"Unable to scrape: {article.Url}");
                         notScrapedArticles.Add(article);
                     } 
                 }
                 Console.WriteLine();
-                Console.WriteLine("Article List Count: " + articlesFromList.Count());
-                Console.WriteLine("Article Scrape Count: " + scrapedArticles.Count());
+                Log.Information("Article List Count: " + articlesFromList.Count());
+                Log.Information("Article Scrape Count: " + scrapedArticles.Count());
                 Console.WriteLine();
                 foreach (BaseArticleModel notScrapedArticle in notScrapedArticles)
                 {
-                    Console.WriteLine(notScrapedArticle.Url);
-                    Console.WriteLine(notScrapedArticle.Title);
-                    Console.WriteLine(notScrapedArticle.Description);
-                    Console.WriteLine();
+                    Log.Information(notScrapedArticle.Url);
                 }
             }
             return articlesFromList;

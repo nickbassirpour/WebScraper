@@ -10,6 +10,8 @@ using System.Drawing;
 using RestSharp;
 using System.Text.Json.Serialization;
 using Newtonsoft.Json;
+using Serilog;
+using System.Reflection;
 
 namespace WebScraper.Services
 {
@@ -17,13 +19,14 @@ namespace WebScraper.Services
     {
         public async Task<ArticleModel?> ScrapeArticle(HtmlDocument htmlDoc, string url, string titleFromBaseArticle)
         {
+            Log.Information($"Scraping: {url}");
             string splitHtmlBody = HtmlParsingHelper.SplitHtmlBody(htmlDoc, url);
 
-            if (splitHtmlBody == null)
-            {
-                return null;
-            }
-            string category = HtmlParsingHelper.GetCategoryFromURL(url);
+            if (splitHtmlBody == null) return null;
+            
+            string? category = HtmlParsingHelper.GetCategoryFromURL(url);
+
+            if (category == null) return null;
 
             Console.WriteLine();
 
@@ -87,6 +90,7 @@ namespace WebScraper.Services
                 return categoryFromColorAndSize.InnerText.Trim();
             }
 
+            Log.Information("Unable to get subcategory");
             return null;
         }
 
@@ -179,46 +183,108 @@ namespace WebScraper.Services
                 return titleFromHTags.InnerText.Trim();
             }
 
-            HtmlNode? titleFromSizeAndColorMaroon = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=6 and @color='maroon' or @size=6 and @color='#800000']");
-            if (titleFromSizeAndColorMaroon != null)
+            foreach (string titleAttrib in ScrapingHelper.titleAttributes)
             {
-                return titleFromSizeAndColorMaroon.InnerText.Trim();
+                HtmlNode? title = htmlDoc.DocumentNode.SelectSingleNode(titleAttrib);
+                if (title != null)
+                {
+                    return title.InnerText.Trim();
+                }
             }
 
-            HtmlNode? titleFromSizeAndColor99000 = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=6 and @color='#990000']");
-            if (titleFromSizeAndColor99000 != null)
-            {
-                return titleFromSizeAndColor99000.InnerText.Trim();
-            }
+            //HtmlNode? titleFromSizeAndColorMaroon = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=6 and @color='maroon' or @size=6 and @color='#800000']");
+            //if (titleFromSizeAndColorMaroon != null)
+            //{
+            //    return titleFromSizeAndColorMaroon.InnerText.Trim();
+            //}
 
-            HtmlNode? titleFromSizeAndColorGreen = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=6 and @color='green']");
-            if (titleFromSizeAndColorGreen != null)
-            {
-                return titleFromSizeAndColorGreen.InnerText.Trim();
-            }
+            //HtmlNode? titleFromSizeAndColor99000 = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=6 and @color='#990000']");
+            //if (titleFromSizeAndColor99000 != null)
+            //{
+            //    return titleFromSizeAndColor99000.InnerText.Trim();
+            //}
 
-            HtmlNode? titleFromSizeAndColorMAROON = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=6 and @color='MAROON']");
-            if (titleFromSizeAndColorMAROON != null)
-            {
-                return titleFromSizeAndColorMAROON.InnerText.Trim();
-            }
+            //HtmlNode? titleFromSizeAndColorGreen = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=6 and @color='green']");
+            //if (titleFromSizeAndColorGreen != null)
+            //{
+            //    return titleFromSizeAndColorGreen.InnerText.Trim();
+            //}
 
-            HtmlNode? titleFromSize5AndColor800000 = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=5 and @color='#800000']");
-            if (titleFromSize5AndColor800000 != null)
-            {
-                return titleFromSize5AndColor800000.InnerText.Trim();
-            }
+            //HtmlNode? titleFromSizeAndColorMAROON = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=6 and @color='MAROON']");
+            //if (titleFromSizeAndColorMAROON != null)
+            //{
+            //    return titleFromSizeAndColorMAROON.InnerText.Trim();
+            //}
 
+            //HtmlNode? titleFromSize5AndColor800000 = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=5 and @color='#800000']");
+            //if (titleFromSize5AndColor800000 != null)
+            //{
+            //    return titleFromSize5AndColor800000.InnerText.Trim();
+            //}
+
+            Log.Information("Unable to get title");
             return null;
         }
 
-        public List<string?> GetAuthor(HtmlDocument htmlDoc, string category)
+        public List<string> GetAuthor(HtmlDocument htmlDoc, string category)
         {
             if (category == "RevolutionPhotos")
             {
                 return null;
             }
 
+            List<string> defaultAuthorForCategory = CheckCategoryForDefaultAuthor(category);
+            if (defaultAuthorForCategory != null) return defaultAuthorForCategory;
+
+            foreach (string authorAttrib in ScrapingHelper.authorAttributes)
+            {
+                HtmlNode? authorNode = htmlDoc.DocumentNode.SelectSingleNode(authorAttrib);
+                if (authorNode != null && !String.IsNullOrWhiteSpace(authorNode.InnerText))
+                {
+                    return SplitAuthors(authorNode);
+                }
+            }
+
+            //HtmlNode? authorFromAuthorClass = htmlDoc.DocumentNode.SelectSingleNode("//*[@class='author']");
+            //if (authorFromAuthorClass != null && !String.IsNullOrWhiteSpace(authorFromAuthorClass.InnerText))
+            //{
+            //    return SplitAuthors(authorFromAuthorClass);
+            //}
+
+            //HtmlNode? authorFromSizeAndId = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=4 and @id='R']");
+            //if (authorFromSizeAndId != null && !String.IsNullOrWhiteSpace(authorFromSizeAndId.InnerText))
+            //{
+            //    return SplitAuthors(authorFromSizeAndId);
+            //}
+
+            //HtmlNode? authorFromSizeAndColor = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=4 and @color='PURPLE']");
+            //if (authorFromSizeAndColor != null && !String.IsNullOrWhiteSpace(authorFromSizeAndColor.InnerText))
+            //{
+            //    return SplitAuthors(authorFromSizeAndColor);
+            //}
+
+            //HtmlNode? authorFromSizeOnly = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=4]");
+            //if (authorFromSizeOnly != null && !String.IsNullOrWhiteSpace(authorFromSizeOnly.InnerText))
+            //{
+            //    return SplitAuthors(authorFromSizeOnly);
+            //}
+
+            if (htmlDoc.DocumentNode.InnerText.ToLower().Contains("dr. horvat responds"))
+            {
+                return new List<string?> { "Dr. Marian Therese Horvat" };
+            }
+
+            if (htmlDoc.DocumentNode.InnerText.ToLower().Contains("tia correspondence desk") ||
+                htmlDoc.DocumentNode.InnerText.ToLower().Contains("tia responds"))
+            {
+                return new List<string?> { "TIA Correspondence Desk" };
+            }
+
+            return null;
+        }
+
+        public List<string> CheckCategoryForDefaultAuthor(string category)
+        {
             if (category == "bev")
             {
                 List<string> atilaAuthorList = new List<string> { "Atila S. Guimarães" };
@@ -235,41 +301,6 @@ namespace WebScraper.Services
             {
                 List<string> correspondenceAuthorList = new List<string> { "TIA Correspondence Desk" };
                 return correspondenceAuthorList;
-            }
-
-                HtmlNode? authorFromAuthorClass = htmlDoc.DocumentNode.SelectSingleNode("//*[@class='author']");
-            if (authorFromAuthorClass != null && !String.IsNullOrWhiteSpace(authorFromAuthorClass.InnerText))
-            {
-                return SplitAuthors(authorFromAuthorClass);
-            }
-
-            HtmlNode? authorFromSizeAndId = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=4 and @id='R']");
-            if (authorFromSizeAndId != null && !String.IsNullOrWhiteSpace(authorFromSizeAndId.InnerText))
-            {
-                return SplitAuthors(authorFromSizeAndId);
-            }
-
-            HtmlNode? authorFromSizeAndColor = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=4 and @color='PURPLE']");
-            if (authorFromSizeAndColor != null && !String.IsNullOrWhiteSpace(authorFromSizeAndColor.InnerText))
-            {
-                return SplitAuthors(authorFromSizeAndColor);
-            }
-
-            HtmlNode? authorFromSizeOnly = htmlDoc.DocumentNode.SelectSingleNode("//*[@size=4]");
-            if (authorFromSizeOnly != null && !String.IsNullOrWhiteSpace(authorFromSizeOnly.InnerText))
-            {
-                return SplitAuthors(authorFromSizeOnly);
-            }
-
-            if (htmlDoc.DocumentNode.InnerText.ToLower().Contains("dr. horvat responds"))
-            {
-                return new List<string?> { "Dr. Marian Therese Horvat" };
-            }
-
-            if (htmlDoc.DocumentNode.InnerText.ToLower().Contains("tia correspondence desk") ||
-                htmlDoc.DocumentNode.InnerText.ToLower().Contains("tia responds"))
-            {
-                return new List<string?> { "TIA Correspondence Desk" };
             }
 
             return null;
@@ -338,6 +369,7 @@ namespace WebScraper.Services
                 return HtmlParsingHelper.ConvertStringToDate(cleanedDateFromPostedText);
             };
 
+            Log.Information("Unable to get date.");
             return null; 
         }
 
@@ -350,7 +382,6 @@ namespace WebScraper.Services
             }
             else if (htmlDoc.DocumentNode.SelectSingleNode("//*[@size='2' and @color='#800000' or @size='2' and @color='maroon']") != null)
             {
-                // add logic to find first or default date at top (descendants, attrib same, text contains posted). 
                 dateFromBEV = htmlDoc.DocumentNode.SelectSingleNode("//*[@size='2' and @color='#800000' or @size='2' and @color='maroon']");
             }
             if (!string.IsNullOrWhiteSpace(dateFromBEV?.InnerText))
@@ -358,6 +389,8 @@ namespace WebScraper.Services
                 string cleanedDateFromBEV = dateFromBEV.InnerText.Replace("NEWS:", "").Replace("News:", "").Replace("news:", "");
                 return HtmlParsingHelper.ConvertStringToDate(cleanedDateFromBEV.Trim());
             }
+
+            Log.Information("Unable to scrape BEV date.");
             return null;
         }
 
@@ -365,8 +398,12 @@ namespace WebScraper.Services
         {
             HtmlDocument splitBodyNode = HtmlParsingHelper.LoadHtmlDocument(splitHtmlBody);
             HtmlNode? firstImageNode = splitBodyNode.DocumentNode.SelectSingleNode("(//img)[1]");
-            if (firstImageNode == null) return null;
-            
+            if (firstImageNode == null)
+            {
+                Log.Information("No first image node found.");
+                return null;
+            }
+
             if (firstImageNode.GetAttributeValue("src", string.Empty).MatchesAnyOf(ScrapingHelper.skipFirstThumbnailImage))
             {
                 firstImageNode = splitBodyNode.DocumentNode.SelectSingleNode("(//img)[2]");

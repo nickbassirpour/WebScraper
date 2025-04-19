@@ -1,4 +1,5 @@
 ﻿using HtmlAgilityPack;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,8 +28,10 @@ namespace WebScraper.Helpers
         {
             if (htmlDoc.DocumentNode.InnerHtml == null)
             {
+                Log.Information("Unable to split HTML Body");
                 return null;
             }
+
             string htmlBodyNode = htmlDoc.DocumentNode.InnerHtml;
             List<string> splitHtmlBody = htmlBodyNode.Split("alt=\"contact\">").ToList();
             if (splitHtmlBody.Count > 1)
@@ -56,8 +59,11 @@ namespace WebScraper.Helpers
                 }
             }
 
+
+            Log.Information("Unable to split HTML Body");
             return null;
         }
+
         internal static HtmlNode ParseBody(HtmlNode node, string url)
         {
             FixLinks(node, url);
@@ -92,23 +98,36 @@ namespace WebScraper.Helpers
 
         internal static string CleanLink(string link, string mainUrl, bool useTIADomain)
         {
-            string domain = useTIADomain ? "https://traditioninaction.org" : "";
+            try
+            {
+                string domain = useTIADomain ? "https://traditioninaction.org" : "";
 
-            if (link.Contains("../"))
-            {
-                link = domain + "/" + link.Replace("../", "");
+                if (link.Contains("../"))
+                {
+                    link = domain + "/" + link.Replace("../", "");
+                }
+                else
+                {
+                    string category = GetCategoryFromURL(mainUrl);
+                    link = domain + "/" + category + "/" + link;
+                }
+                return link;
             }
-            else
+            catch 
             {
-                string category = GetCategoryFromURL(mainUrl);
-                link = domain + "/" + category + "/" + link;
+                Log.Information($"Unable to clean link for {link}");
+                return null;
             }
-            return link;
         }
 
-        internal static string GetCategoryFromURL(string url)
+        internal static string? GetCategoryFromURL(string url)
         {
             string category = url.Split("/")[3];
+            if (string.IsNullOrEmpty(category))
+            {
+                Log.Information($"Unable to get category from link: {url}");
+                return null;
+            }
             return category;
         }
 
